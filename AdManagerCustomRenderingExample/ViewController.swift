@@ -60,7 +60,7 @@ class ViewController: UIViewController {
   let adUnitID = "/3865/ddm.people.app/feed/app-flex-1"
 
   /// The native custom format id
-  let nativeCustomFormatId = "12379854"
+  let nativeCustomFormatId = "12416731"
 
   /// Handle changes to user consent.
   @IBAction func privacySettingsTapped(_ sender: UIBarButtonItem) {
@@ -184,7 +184,15 @@ class ViewController: UIViewController {
         adUnitID: adUnitID, rootViewController: self,
         adTypes: adTypes, options: [videoOptions])
       adLoader.delegate = self
-      adLoader.load(Request())
+      
+      let request = Request()
+      
+      // Add custom targeting
+      request.customTargeting = [
+          "advertest": "moonshotvideo"
+      ]
+      
+      adLoader.load(request)
       videoStatusLabel.text = ""
     }
   }
@@ -242,6 +250,7 @@ extension ViewController: @preconcurrency NativeAdLoaderDelegate {
   func adLoader(_ adLoader: AdLoader, didReceive nativeAd: NativeAd) {
     print("Received native ad: \(nativeAd)")
     refreshAdButton.isEnabled = true
+    
     // Create and place ad in view hierarchy.
     let nibView = Bundle.main.loadNibNamed("NativeAdView", owner: nil, options: nil)?.first
     guard let nativeAdView = nibView as? NativeAdView else {
@@ -331,6 +340,19 @@ extension ViewController: @preconcurrency CustomNativeAdLoaderDelegate {
   ) {
     print("Received custom native ad: \(customNativeAd)")
     refreshAdButton.isEnabled = true
+
+    // Log regular string assets
+    for assetKey in customNativeAd.availableAssetKeys {
+        if assetKey != "_videoMediaView" {
+            if let value = customNativeAd.string(forKey: assetKey) {
+                print("Asset: \(assetKey) = \(value)")
+            }
+        }
+    }
+    
+    let responseInfo = customNativeAd.responseInfo
+    print("Full Response Info: \(responseInfo)")
+
     // Create and place the ad in the view hierarchy.
     let customNativeAdView =
       Bundle.main.loadNibNamed(
