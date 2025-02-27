@@ -57,10 +57,15 @@ class ViewController: UIViewController {
   private var isMobileAdsStartCalled = false
 
   /// The ad unit ID.
-  let adUnitID = "/21775744923/example/native"
+  let adUnitID = "/3865/ddm.people.app/feed/app-flex-1"
 
   /// The native custom format id
-  let nativeCustomFormatId = "12387226"
+  let nativeCustomFormatId = "12416731"
+    /// The ad unit ID.
+//      let adUnitID = "/21775744923/example/native"
+//
+//      /// The native custom format id
+//      let nativeCustomFormatId = "12387226"
 
   /// Handle changes to user consent.
   @IBAction func privacySettingsTapped(_ sender: UIBarButtonItem) {
@@ -184,7 +189,15 @@ class ViewController: UIViewController {
         adUnitID: adUnitID, rootViewController: self,
         adTypes: adTypes, options: [videoOptions])
       adLoader.delegate = self
-      adLoader.load(Request())
+      
+      let request = Request()
+      
+      // Add custom targeting
+      request.customTargeting = [
+          "advertest": "moonshotvideo"
+      ]
+      
+      adLoader.load(request)
       videoStatusLabel.text = ""
     }
   }
@@ -242,6 +255,7 @@ extension ViewController: @preconcurrency NativeAdLoaderDelegate {
   func adLoader(_ adLoader: AdLoader, didReceive nativeAd: NativeAd) {
     print("Received native ad: \(nativeAd)")
     refreshAdButton.isEnabled = true
+    
     // Create and place ad in view hierarchy.
     let nibView = Bundle.main.loadNibNamed("NativeAdView", owner: nil, options: nil)?.first
     guard let nativeAdView = nibView as? NativeAdView else {
@@ -261,6 +275,7 @@ extension ViewController: @preconcurrency NativeAdLoaderDelegate {
     // GADVideoController's hasVideoContent property to determine if one is present, and adjust their
     // UI accordingly.
     // Update the ViewController for video content.
+      
     let hasVideoContent = nativeAd.mediaContent.hasVideoContent
     updateVideoStatusLabel(hasVideoContent: hasVideoContent)
     if hasVideoContent {
@@ -330,7 +345,59 @@ extension ViewController: @preconcurrency CustomNativeAdLoaderDelegate {
     didReceive customNativeAd: CustomNativeAd
   ) {
     print("Received custom native ad: \(customNativeAd)")
+      print("Available asset keys:", customNativeAd.availableAssetKeys)
+      for key in customNativeAd.availableAssetKeys {
+          if let value = customNativeAd.string(forKey: key) {
+              print("Key: \(key), Value: \(value)")
+          }
+      }
+      if let videoURLString = customNativeAd.string(forKey: "Video") {
+          print("Video URL: \(videoURLString)")
+          
+          // Convert the string to a valid URL
+          if let videoURL = URL(string: videoURLString) {
+              let tempDirectory = FileManager.default.temporaryDirectory
+              let tempURL = tempDirectory.appendingPathComponent("ad_video.mp4")
+
+              do {
+                  try videoURL.absoluteString.write(to: tempURL, atomically: true, encoding: .utf8)
+                  print("Temporary Video URL: \(tempURL.absoluteString)")
+              } catch {
+                  print("Failed to write video URL to temp directory:", error)
+              }
+          }
+      } else {
+          print("No direct video URL found in the custom native ad.")
+      }
+      
+
+      if let imageAsset = customNativeAd.image(forKey: "image")?.image,
+         let pngData = imageAsset.pngData() {
+          
+          let tempDirectory = FileManager.default.temporaryDirectory
+          let tempURL = tempDirectory.appendingPathComponent("ad_image.png")
+          
+          do {
+              try pngData.write(to: tempURL)
+              print("Temporary Image URL: \(tempURL.absoluteString)")
+          } catch {
+              print("Failed to write to temp directory:", error)
+          }
+      }
     refreshAdButton.isEnabled = true
+
+    // Log regular string assets
+    for assetKey in customNativeAd.availableAssetKeys {
+        if assetKey != "_videoMediaView" {
+            if let value = customNativeAd.string(forKey: assetKey) {
+                print("Asset: \(assetKey) = \(value)")
+            }
+        }
+    }
+    
+    let responseInfo = customNativeAd.responseInfo
+    print("Full Response Info: \(responseInfo)")
+
     // Create and place the ad in the view hierarchy.
     let customNativeAdView =
       Bundle.main.loadNibNamed(
